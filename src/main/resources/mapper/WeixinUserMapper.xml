@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.weixin.mapper.WeixinUserMapper">
+
+    <insert id="subscribe" parameterType="com.weixin.model.weixin.WeixinUser">
+        INSERT  into t_weixin_user(open_id,weixin_id,status,create_time,update_time) VALUES (
+            #{openId},#{weixinId},#{status},#{createTime},#{updateTime})
+    </insert>
+
+    <select id="isHaveDate" resultType="java.lang.Integer">
+        select count(1) as num from t_weixin_user where open_id=#{openId,jdbcType=VARCHAR} and weixin_id=#{weixinId,jdbcType=VARCHAR}
+    </select>
+
+    <update id="updateSubscribe" parameterType="com.weixin.model.weixin.WeixinUser">
+        UPDATE  t_weixin_user set status=#{status},update_time=#{updateTime} where open_id=#{openId} and weixin_id=#{weixinId}
+    </update>
+
+</mapper>
