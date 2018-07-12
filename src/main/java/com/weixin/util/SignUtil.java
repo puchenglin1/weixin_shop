@@ -8,8 +8,7 @@ import java.util.Arrays;
  * 微信接口认证
  */
 public class SignUtil {
-    //Token
-    private static String token = "kmmiel";
+
 
     /**
      * 验证签名
@@ -19,7 +18,7 @@ public class SignUtil {
      * @return
      */
     public static boolean checkSignature(String signature,String timestamp,String nonce){
-        String [] arr=new String[] {token,timestamp,nonce};
+        String [] arr=new String[] {WeiXinParams.token,timestamp,nonce};
         Arrays.sort(arr);
         StringBuilder content=new StringBuilder();
         for(int i=0;i<arr.length;i++){

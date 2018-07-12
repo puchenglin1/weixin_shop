@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.weixin.mapper.WeixinUserMapper">
+
+    <select id="getToken" parameterType="java.lang.String" resultType="com.weixin.model.weixin.AccessToken">
+        select access_token,expires_in from access_token where app_id=#{appid,jdbcType=VARCHAR}
+    </select>
+
+    <insert id="insertData" parameterType="com.weixin.model.weixin.AccessToken">
+        insert  into access_token (app_id,access_token,expires_in) values (#{appid},#{accessToken},#{expiresIn})
+    </insert>
+
+    <update id="updateData" parameterType="com.weixin.model.weixin.AccessToken">
+        update access_token set access_token=#{accessToken},expires_in=#{accessToken} where app_id=#{appid}
+    </update>
+
+</mapper>
