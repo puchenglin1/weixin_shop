@@ -1,8 +1,5 @@
 package com.weixin.util;
 
-import com.weixin.model.weixin.AccessToken;
-
-import net.sf.json.JSONException;
 import net.sf.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,19 +18,47 @@ public class WeiXinUtil {
 
     private final static Logger log=LoggerFactory.getLogger(WeiXinUtil.class);
 
+    /**
+     * 获取token
+     * @param appid
+     * @param appsecret
+     * @return
+     */
+    public static String getAccessToken(String appid,String appsecret){
+        RedisUtil redisUtil=new RedisUtil();
+        String token= redisUtil.get("appid");
+        if(token!=null&&!"".equals(token)){
+            return token;
+        }else{
+            String requestUrl=WeiXinParams.access_token_url.replace("APPID",WeiXinParams.appid).replace("APPSECRET",WeiXinParams.appsecret);
+            JSONObject jsonObject=httpRequest(requestUrl,"GET",null);
+            if(jsonObject!=null){
+                token=jsonObject.getString("access_token");
+                redisUtil.set(appid,token);
+                redisUtil.expire(appid,jsonObject.getInt("expires_in")-200);
+                log.info("获取token失败 errcode:{} errmsg:{}",jsonObject.getInt("errcode"),jsonObject.getString("errmsg"));
+            }
+        }
+        return token;
+    }
+
+
     public static JSONObject httpRequest(String requestUrl, String requestMethod, String outputStr) {
         JSONObject jsonObject = null;
         StringBuffer buffer = new StringBuffer();
         try {
             // 创建 SSLContext 对象，并使用我们指定的信任管理器初始化
             TrustManager[] tm = { new X509TrustManager (){  //证书信任管理器（用于 https 请求）
+                    @Override
                     public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
 
                     }
+                    @Override
                     public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
 
                     }
 
+                    @Override
                     public X509Certificate[] getAcceptedIssuers() {
                         return null;
                     }
@@ -52,8 +77,9 @@ public class WeiXinUtil {
             httpUrlConn.setUseCaches(false);
             // 设置请求方式（GET/POST）
             httpUrlConn.setRequestMethod(requestMethod);
-            if ("GET".equalsIgnoreCase(requestMethod))
+            if ("GET".equalsIgnoreCase(requestMethod)){
                 httpUrlConn.connect();
+            }
             // 当有数据需要提交时
             if (null != outputStr) {
                 OutputStream outputStream = httpUrlConn.getOutputStream();
@@ -84,19 +110,5 @@ public class WeiXinUtil {
         return jsonObject;
     }
 
-    public static AccessToken getAccessToken(String appid,String appsecret){
-        AccessToken accessToken=null;
-        String requestUrl=WeiXinParams.access_token_url.replace("APPID",WeiXinParams.appid).replace("APPSECRET",WeiXinParams.appsecret);
-        JSONObject jsonObject=httpRequest(requestUrl,"GET",null);
-        if(null!=jsonObject){
-            try{
-                accessToken=new AccessToken();
-                accessToken.setAccessToken(jsonObject.getString("access_token"));
-                accessToken.setExpiresIn(jsonObject.getInt("expires_in"));
-            }catch(JSONException e){
-                log.error("获取token失败 errcode:{} errmsg:{}",jsonObject.getInt("errcode"),jsonObject.getString("errmsg"));
-            }
-        }
-        return accessToken;
-    }
+
 }

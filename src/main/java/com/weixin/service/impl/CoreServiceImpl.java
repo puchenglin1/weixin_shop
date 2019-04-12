@@ -5,16 +5,20 @@ import com.weixin.message.resp.TextMessage;
 import com.weixin.model.weixin.WeixinUser;
 import com.weixin.service.CoreService;
 import com.weixin.util.MessageUtil;
+import com.weixin.util.WeiXinParams;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import javax.xml.soap.Text;
-import java.util.Date;
+import javax.servlet.http.HttpServletResponse;
+import java.net.URLEncoder;
 import java.util.Map;
 
 @Service("coreService")
 public class CoreServiceImpl  implements CoreService{
+    private final static Logger log= LoggerFactory.getLogger(CoreServiceImpl.class);
     @Resource
     private WeixinUserMapper weixinUserMapper;
     /**
@@ -22,6 +26,7 @@ public class CoreServiceImpl  implements CoreService{
      * @param request
      * @return
      */
+    @Override
     public String processRequest(HttpServletRequest request){
         String respMessage=null;
         try{
@@ -39,7 +44,7 @@ public class CoreServiceImpl  implements CoreService{
             TextMessage textMessage=new TextMessage();
             textMessage.setToUserName(fromUserName);
             textMessage.setFromUserName(toUsreName);
-            textMessage.setCreateTime(new Date().getTime());
+            textMessage.setCreateTime(System.currentTimeMillis());
             textMessage.setMsgType(MessageUtil.RESP_MESSAGE_TYPE_TEXT);
             textMessage.setFuncFlag(0);
 
@@ -106,5 +111,53 @@ public class CoreServiceImpl  implements CoreService{
             e.printStackTrace();
         }
         return respMessage;
+    }
+
+    @Override
+    public void wxLogin(HttpServletResponse response) {
+        String url = WeiXinParams.authorize_url.replace("APPID",WeiXinParams.appid).replace("REDIRECT_URI", URLEncoder.encode(WeiXinParams.redirect_uri));
+        try{
+            response.sendRedirect(url);
+        }catch (Exception e){
+            log.error("网页授权异常：",e);
+        }
+
+    }
+
+    @Override
+    public void callBack(HttpServletRequest request, HttpServletResponse response) {
+        //第二步：通过code换取网页授权access_token
+
+        //从request里面获取code参数(当微信服务器访问回调地址的时候，会把code参数传递过来)
+        String code = request.getParameter("code");
+
+        System.out.println("code:"+code);
+
+        //获取code后，请求以下链接获取access_token
+        String url = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=" + AuthUtil.APPID
+                + "&secret=" + AuthUtil.APPSECRET
+                + "&code=" + code
+                + "&grant_type=authorization_code";
+
+        //通过网络请求方法来请求上面这个接口
+        JSONObject jsonObject = AuthUtil.doGetJson(url);
+
+        System.out.println("==========================jsonObject"+jsonObject);
+
+        //从返回的JSON数据中取出access_token和openid，拉取用户信息时用
+        String token =  jsonObject.getString("access_token");
+        String openid = jsonObject.getString("openid");
+
+        // 第三步：刷新access_token（如果需要）
+
+        // 第四步：拉取用户信息(需scope为 snsapi_userinfo)
+        String infoUrl ="https://api.weixin.qq.com/sns/userinfo?access_token=" + token
+                + "&openid=" + openid
+                + "&lang=zh_CN";
+        //通过网络请求方法来请求上面这个接口
+        JSONObject userInfo = AuthUtil.doGetJson(infoUrl);
+
+        System.out.println(userInfo);
+
     }
 }

@@ -1,6 +1,6 @@
 package com.weixin.util;
 
-import com.sun.org.apache.xml.internal.resolver.readers.SAXCatalogReader;
+
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.core.util.QuickWriter;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
@@ -112,9 +112,11 @@ public class MessageUtil {
         public HierarchicalStreamWriter createWriter(Writer out) {
             return new PrettyPrintWriter(out){
                 boolean cdata=true;
-                public void startNode(String name,Class clazz){
+                @Override
+                public void startNode(String name, Class clazz){
                     super.startNode(name,clazz);
                 }
+                @Override
                 protected void writeText(QuickWriter writer, String text){
                     if(cdata){
                         writer.write("<![CDATA[");

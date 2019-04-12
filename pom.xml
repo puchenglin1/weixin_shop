@@ -4,11 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.weixin</groupId>
-	<artifactId>springboot-shiro</artifactId>
+	<artifactId>weixinshop</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>springboot-shiro</name>
+	<name>weixinshop</name>
 	<description>Demo project for Spring Boot</description>
 
 	<parent>
