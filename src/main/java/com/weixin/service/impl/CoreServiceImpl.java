@@ -2,10 +2,12 @@ package com.weixin.service.impl;
 
 import com.weixin.mapper.WeixinUserMapper;
 import com.weixin.message.resp.TextMessage;
-import com.weixin.model.weixin.WeixinUser;
+import com.weixin.model.weixin.*;
 import com.weixin.service.CoreService;
 import com.weixin.util.MessageUtil;
 import com.weixin.util.WeiXinParams;
+import com.weixin.util.WeiXinUtil;
+import net.sf.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ public class CoreServiceImpl  implements CoreService{
     private final static Logger log= LoggerFactory.getLogger(CoreServiceImpl.class);
     @Resource
     private WeixinUserMapper weixinUserMapper;
+    @Resource
+    private WeiXinUtil weiXinUtil;
     /**
      * 处理微信发送过来的请求
      * @param request
@@ -125,39 +129,45 @@ public class CoreServiceImpl  implements CoreService{
     }
 
     @Override
-    public void callBack(HttpServletRequest request, HttpServletResponse response) {
-        //第二步：通过code换取网页授权access_token
+    public Message callBack(HttpServletRequest request, HttpServletResponse response) {
+        Message message=new Message();
+        message.setSuccess("0");
+        try{
+            //第二步：通过code换取网页授权access_token
+            //从request里面获取code参数(当微信服务器访问回调地址的时候，会把code参数传递过来)
+            String code = request.getParameter("code");
+            log.info("网页授权code------"+code);
+            //获取code后，请求以下链接获取access_token
+            String url= WeiXinParams.authorize_access_token_url.replace("APPID",WeiXinParams.appid).replace("SECRET",WeiXinParams.appsecret).replace("CODE",code);
+            JSONObject jsonObject=weiXinUtil.httpRequest(url,"GET",null);
+            log.info("网页授权==========================jsonObject"+jsonObject);
+            //从返回的JSON数据中取出access_token和openid，拉取用户信息时用
+            String openid = jsonObject.getString("openid");
+            if(openid!=null){
+                message.setData("1");
+                message.setData(openid);
+            }
+        }catch(Exception e){
+            log.error("网页授权异常",e);
+            message.setMessage("网页授权异常");
+        }
 
-        //从request里面获取code参数(当微信服务器访问回调地址的时候，会把code参数传递过来)
-        String code = request.getParameter("code");
+        return message;
+    }
 
-        System.out.println("code:"+code);
+    @Override
+    public Message createMenu() {
+        Message message=weiXinUtil.createMenu(getMenu());
+        return message;
+    }
 
-        //获取code后，请求以下链接获取access_token
-        String url = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=" + AuthUtil.APPID
-                + "&secret=" + AuthUtil.APPSECRET
-                + "&code=" + code
-                + "&grant_type=authorization_code";
-
-        //通过网络请求方法来请求上面这个接口
-        JSONObject jsonObject = AuthUtil.doGetJson(url);
-
-        System.out.println("==========================jsonObject"+jsonObject);
-
-        //从返回的JSON数据中取出access_token和openid，拉取用户信息时用
-        String token =  jsonObject.getString("access_token");
-        String openid = jsonObject.getString("openid");
-
-        // 第三步：刷新access_token（如果需要）
-
-        // 第四步：拉取用户信息(需scope为 snsapi_userinfo)
-        String infoUrl ="https://api.weixin.qq.com/sns/userinfo?access_token=" + token
-                + "&openid=" + openid
-                + "&lang=zh_CN";
-        //通过网络请求方法来请求上面这个接口
-        JSONObject userInfo = AuthUtil.doGetJson(infoUrl);
-
-        System.out.println(userInfo);
-
+    public Menu getMenu(){
+        CommonButton button=new CommonButton();
+        button.setName("首页");
+        button.setType("view");
+        button.setUrl("http://na14880429.iask.in/commodity/toIndex");
+        Menu menu=new Menu();
+        menu.setButton(new Button[]{button});
+        return menu;
     }
 }

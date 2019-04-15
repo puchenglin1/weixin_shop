@@ -1,8 +1,12 @@
 package com.weixin.util;
 
+import com.weixin.model.weixin.Menu;
+import com.weixin.model.weixin.Message;
 import net.sf.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.net.ssl.*;
 import java.io.BufferedReader;
@@ -14,9 +18,12 @@ import java.net.URL;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
+@Component
 public class WeiXinUtil {
 
     private final static Logger log=LoggerFactory.getLogger(WeiXinUtil.class);
+    @Autowired
+    private RedisUtil redisUtil;
 
     /**
      * 获取token
@@ -24,9 +31,9 @@ public class WeiXinUtil {
      * @param appsecret
      * @return
      */
-    public static String getAccessToken(String appid,String appsecret){
-        RedisUtil redisUtil=new RedisUtil();
-        String token= redisUtil.get("appid");
+    public String getAccessToken(String appid,String appsecret){
+
+        String token= (String)redisUtil.get(appid);
         if(token!=null&&!"".equals(token)){
             return token;
         }else{
@@ -34,16 +41,36 @@ public class WeiXinUtil {
             JSONObject jsonObject=httpRequest(requestUrl,"GET",null);
             if(jsonObject!=null){
                 token=jsonObject.getString("access_token");
-                redisUtil.set(appid,token);
-                redisUtil.expire(appid,jsonObject.getInt("expires_in")-200);
-                log.info("获取token失败 errcode:{} errmsg:{}",jsonObject.getInt("errcode"),jsonObject.getString("errmsg"));
+                redisUtil.set(appid,token,jsonObject.getInt("expires_in")-200);
             }
         }
         return token;
     }
 
+    /**
+     * 创建菜单
+     * @param menu
+     * @return
+     */
+    public Message createMenu(Menu menu){
+        Message message=new Message();
+        String token=getAccessToken(WeiXinParams.appid,WeiXinParams.appsecret);
+        String jsonMenu=JSONObject.fromObject(menu).toString();
+        String requestUrl=WeiXinParams.create_menu_url.replace("ACCESS_TOKEN",token);
+        JSONObject jsonObject=httpRequest(requestUrl,"GET",jsonMenu);
+        if(jsonObject!=null){
+            message.setSuccess(jsonObject.getInt("errcode")+"");
+            message.setMessage(jsonObject.getString("errmsg"));
+            if(jsonObject.getInt("errcode")!=0){
+                jsonObject.getInt("errcode");
+                log.error("创建菜单失败 errcode:{} errmsg:{}", jsonObject.getInt("errcode"), jsonObject.getString("errmsg"));
+            }
+        }
+        return message;
+    }
 
-    public static JSONObject httpRequest(String requestUrl, String requestMethod, String outputStr) {
+
+    public JSONObject httpRequest(String requestUrl, String requestMethod, String outputStr) {
         JSONObject jsonObject = null;
         StringBuffer buffer = new StringBuffer();
         try {

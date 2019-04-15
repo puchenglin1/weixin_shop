@@ -5,100 +5,110 @@ package com.weixin.util;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisPool;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
+import java.util.concurrent.TimeUnit;
+
+@Component
 public class RedisUtil {
     private Logger logger = LoggerFactory.getLogger(RedisUtil.class);
 
     @Autowired
-    private JedisPool jedisPool;
+    private RedisTemplate<String, Object> redisTemplate;
 
     /**
-     * 向redis存入key和value
-     * @param key
-     * @param value
+     * 指定缓存失效时间
+     * @param key 键
+     * @param time 时间(秒)
      * @return
      */
-    public String set(String key,String value){
-        Jedis jedis = null;
-        String s="";
-        try{
-            jedis=jedisPool.getResource();
-            s= jedis.set(key,value);
-        }catch (Exception e){
-            logger.error("jedis get error:{}",e);
-        }finally{
-            returnResource(jedis);
-            return s;
+    public boolean expire(String key, long time) {
+        try {
+            if (time > 0) {
+                redisTemplate.expire(key, time, TimeUnit.SECONDS);
+            }
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
     }
 
     /**
-     *通过key获取储存在redis中的value
-     * @param key
-     * @return
+     * 判断key是否存在
+     * @param key 键
+     * @return true 存在 false不存在
      */
-    public String get(String key){
-        String value="";
-        Jedis jedis=null;
-        try{
-            jedis=jedisPool.getResource();
-            value=jedis.get(key);
-            logger.info("key===========:"+value);
-        }catch (Exception e){
-            logger.error("jedis set error:{}",e);
-        }finally{
-            returnResource(jedis);
-            return value;
+    public boolean hasKey(String key) {
+        try {
+            return redisTemplate.hasKey(key);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
     }
 
     /**
-     * 删除指定key
-     * @param key
-     * @return
+     * 删除缓存
+     * @param key 可以传一个值 或多个
      */
-    public Long del(String key){
-        Jedis jedis=null;
-        Long l=0L;
-        try{
-            jedis=jedisPool.getResource();
-            l= jedis.del(key);
-        }catch (Exception e){
-            logger.error("jedis del error:{}",e);
-        }finally{
-            returnResource(jedis);
-            return l;
+    @SuppressWarnings("unchecked")
+    public void del(String... key) {
+        if (key != null && key.length > 0) {
+            if (key.length == 1) {
+                redisTemplate.delete(key[0]);
+            } else {
+                redisTemplate.delete(CollectionUtils.arrayToList(key));
+            }
         }
     }
 
     /**
-     * 为给定 key 设置生存时间，当 key 过期时(生存时间为 0 )，它会被自动删除。
-     * @param key
-     * @param value
-     * @return
+     * 普通缓存获取
+     * @param key 键
+     * @return 值
      */
-    public Long expire(String key,int value){
-        Jedis jedis=null;
-        Long l=0L;
-        try{
-            jedis=jedisPool.getResource();
-            l=jedis.expire(key,value);
-        }catch(Exception e){
-            logger.error("jedis expire error:{}",e);
-        }finally{
-            returnResource(jedis);
-            return l;
+    public Object get(String key) {
+        return key == null ? null : redisTemplate.opsForValue().get(key);
+    }
+
+    /**
+     * 普通缓存放入
+     * @param key 键
+     * @param value 值
+     * @return true成功 false失败
+     */
+    public boolean set(String key, Object value) {
+        try {
+            redisTemplate.opsForValue().set(key, value);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
     }
 
     /**
-     * 释放资源
+     * 普通缓存放入并设置时间
+     * @param key 键
+     * @param value 值
+     * @param time 时间(秒) time要大于0 如果time小于等于0 将设置无限期
+     * @return true成功 false 失败
      */
-    public void returnResource(Jedis jedis){
-        if(jedis!=null){
-            jedisPool.returnResource(jedis);
+    public boolean set(String key, Object value, long time) {
+        try {
+            if (time > 0) {
+                redisTemplate.opsForValue().set(key, value, time, TimeUnit.SECONDS);
+            } else {
+                set(key, value);
+            }
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
         }
     }
+
 }
